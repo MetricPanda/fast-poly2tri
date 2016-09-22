@@ -114,7 +114,7 @@ The following defines can be used to tweak the library:
 
 - `#define MPE_POLY2TRI_USE_FAST_ATAN`
   To enable approximate Atan2 function. The implementation provided has an
-  error of ~0.0005 radians that is good enough for most use cases.
+  error of ~0.005 radians that is good enough for most use cases.
 
 - `#define MPE_POLY2TRI_USE_DOUBLE`
   To use double precision floating point for calculations
