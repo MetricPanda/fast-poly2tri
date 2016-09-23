@@ -11,7 +11,7 @@ Passing malformed data will result in a crash, you _must_ pre-validate the data.
 the ability to add Steiner points explicitly, but they can be added
 by manipulating the internal state of the context.
 
-You can find out more information on the performance optimizations compared to the original library in the blog post [Chronicle of an Optimization with perf and C](https://metricpanda.com).
+You can find out more information on the performance optimizations compared to the original library in the blog post [Chronicle of an Optimization with perf and C](https://metricpanda.com/rival-fortress-update-36-chronicle-of-optimization-with-perf-and-c).
 
 
 
@@ -112,10 +112,6 @@ if (MPE_PolyInitContext(&PolyContext, Memory, MaxPointCount))
 
 The following defines can be used to tweak the library:
 
-- `#define MPE_POLY2TRI_USE_FAST_ATAN`
-  To enable approximate Atan2 function. The implementation provided has an
-  error of ~0.005 radians that is good enough for most use cases.
-
 - `#define MPE_POLY2TRI_USE_DOUBLE`
   To use double precision floating point for calculations
 
@@ -124,9 +120,6 @@ The following defines can be used to tweak the library:
   require more working memory.
 
 ## Standard library overrides
-
-- `#define MPE_Atan2(Y, X)`
-  To replace the math.h atan2f function when not using the approximate atan function
 
 - `#define MPE_MemorySet, MPE_MemoryCopy`
   To avoid including string.h

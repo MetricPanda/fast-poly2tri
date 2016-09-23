@@ -112,10 +112,6 @@
   ////////////////////////////////
   Configuration defines:
 
-  #define MPE_POLY2TRI_USE_FAST_ATAN
-     To enable approximate Atan2 function. The implementation provided has an
-     error of 0.005 radians that is good enough for most use cases.
-
   #define MPE_POLY2TRI_USE_DOUBLE
      To use double precision floating point for calculations
 
@@ -125,9 +121,6 @@
 
   ////////////////////////////////
   Standard library overrides
-
-  #define MPE_Atan2(Y, X)
-    To replace the math.h atan2f function when not using the approximate atan function
 
   #define MPE_MemorySet, MPE_MemoryCopy
     To avoid including string.h
@@ -144,11 +137,6 @@
 //SECTION: Engine define overrides
 
 #include <math.h>  // fabs fabsf
-#ifdef MPE_POLY2TRI_USE_FAST_ATAN
-  #define MPE_Atan2 MPE_FastAtan2
-#elif !defined(MPE_Atan2)
-  #define MPE_Atan2 atan2
-#endif
 
 #ifndef MPE_MemorySet
   #include <string.h> //memset
@@ -387,58 +375,6 @@ enum MPEPolyTriFlag
 
 
 static u32 MPEPolyEdgeLUT[] = {0, 1, 2, 0, 1, 2, 3};
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wfloat-equal"
-internal_static
-poly_float MPE_FastAtan2(poly_float Y, poly_float X)
-{
-  f32 Result;
-	if (X == 0)
-	{
-		if (Y > 0)
-    {
-      Result = (f32)MPE_HALF_PI;
-    }
-    else if (Y < 0)
-    {
-      Result = -(f32)MPE_HALF_PI;
-    }
-    else
-    {
-      Result = 0;
-    }
-	}
-  else
-  {
-    f32 Z = (f32)(Y/X);
-    if (fabsf(Z) < 1.0f)
-    {
-      Result = Z/(1.0f + 0.28f*Z*Z);
-      if (X < 0)
-      {
-        if (Y < 0)
-        {
-          Result = Result - (f32)MPE_PI;
-        }
-        else
-        {
-          Result = Result + (f32)MPE_PI;
-        }
-      }
-    }
-    else
-    {
-      Result = (f32)MPE_HALF_PI - Z/(Z*Z + 0.28f);
-      if (Y < 0)
-      {
-        Result = Result - (f32)MPE_PI;
-      }
-    }
-  }
-  return (poly_float)Result;
-}
-#pragma clang diagnostic pop
 
 internal_static
 u8* MPE_PolyPushRaw(MPEPolyAllocator* Allocator, umm Size)
@@ -942,42 +878,27 @@ bxx MPE_IsEdgeSideOfTriangle(MPEPolyTriangle* Triangle, MPEPolyPoint* EdgeP, MPE
 }
 
 internal_static
-poly_float MPE_Angle(MPEPolyPoint* Origin, MPEPolyPoint* PointA, MPEPolyPoint* PointB)
-{
-  /* Complex plane
-   * ab = cosA +i*sinA
-   * ab = (ax + ay*i)(bx + by*i) = (ax*bx + ay*by) + i(ax*by-ay*bx)
-   * atan2(Y,X) computes the principal Value of the argument function
-   * applied to the complex number X+iy
-   * Where X = ax*bx + ay*by
-   *       Y = ax*by - ay*bx
-   */
-  poly_float PX = Origin->X;
-  poly_float PY = Origin->Y;
-  poly_float AX = PointA->X - PX;
-  poly_float AY = PointA->Y - PY;
-  poly_float BX = PointB->X - PX;
-  poly_float BY = PointB->Y - PY;
-  poly_float X = AX * BY - AY * BX;
-  poly_float Y = AX * BX + AY * BY;
-  poly_float Angle = MPE_Atan2(X, Y);
-  return Angle;
-}
-
-
-internal_static
 bxx MPE_AngleExceeds90Degrees(MPEPolyPoint* Origin, MPEPolyPoint* PointA, MPEPolyPoint* PointB)
 {
-  poly_float Angle = MPE_Angle(Origin, PointA, PointB);
-  bxx Result = ((Angle > MPE_HALF_PI) || (Angle < -MPE_HALF_PI));
+  poly_float AX = PointA->X - Origin->X;
+  poly_float AY = PointA->Y - Origin->Y;
+  poly_float BX = PointB->X - Origin->X;
+  poly_float BY = PointB->Y - Origin->Y;
+  poly_float DotProduct = AX * BX + AY * BY;
+  bxx Result = DotProduct < 0;
   return Result;
 }
 
 internal_static
 bxx MPE_AngleExceedsPlus90DegreesOrIsNegative(MPEPolyPoint* Origin, MPEPolyPoint* PointA, MPEPolyPoint* PointB)
 {
-  poly_float Angle = MPE_Angle(Origin, PointA, PointB);
-  bxx Result = (Angle > MPE_HALF_PI) || (Angle < 0);
+  poly_float AX = PointA->X - Origin->X;
+  poly_float AY = PointA->Y - Origin->Y;
+  poly_float BX = PointB->X - Origin->X;
+  poly_float BY = PointB->Y - Origin->Y;
+  poly_float DotProduct = AX * BX + AY * BY;
+  poly_float Direction = AX * BY - AY * BX;
+  bxx Result = DotProduct < 0 || Direction < 0;
   return Result;
 }
 
@@ -1019,11 +940,15 @@ bxx MPE_LargeHole_DontFill(MPEPolyNode* Node)
 }
 
 internal_static MPE_INLINE
-poly_float MPE_BasinAngle(MPEPolyNode* Node)
+bxx MPE_PolyShouldFillBasin(MPEPolyNode* Node)
 {
-  poly_float ax = Node->Point->X - Node->Next->Next->Point->X;
-  poly_float ay = Node->Point->Y - Node->Next->Next->Point->Y;
-  poly_float Result = MPE_Atan2(ay, ax);
+  poly_float AX = Node->Point->X;
+  poly_float AY = Node->Point->Y;
+  poly_float BX = Node->Next->Next->Point->X;
+  poly_float BY = Node->Next->Next->Point->Y;
+  poly_float DotProduct = AX * BX + AY * BY;
+  poly_float Direction = AX * BY - AY * BX;
+  bxx Result = DotProduct < 0 || Direction > 0;
   return Result;
 }
 
@@ -2186,8 +2111,7 @@ void MPE_PolyTriangulate(MPEPolyContext* PolyContext)
           // Fill Right basins
           if (NewNode->Next && NewNode->Next->Next)
           {
-            poly_float Angle = MPE_BasinAngle(NewNode);
-            if (Angle < MPE_THREE_QUARTER_PI)
+            if (MPE_PolyShouldFillBasin(NewNode))
             {
               MPE_FillBasin(PolyContext, NewNode);
             }
