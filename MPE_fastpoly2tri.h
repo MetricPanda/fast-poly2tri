@@ -312,13 +312,6 @@ void MPE_PolyTriangulate(MPEPolyContext* PolyContext);
 #define MPE_POLY2TRI_EPSILON (poly_float)1e-12f
 #define MPE_POLY2TRI_POINT_COUNT_EPSILON 16
 
-#ifndef MPE_PI
-  #define MPE_PI 3.14159265358979323846264
-  #define MPE_ONE_QUARTER_PI (poly_float)(MPE_PI/4.0)
-  #define MPE_THREE_QUARTER_PI (poly_float)(3.0 * MPE_PI / 4.0)
-  #define MPE_HALF_PI (poly_float)1.57079632679489661923
-#endif
-
 #ifndef MPE_InvalidCodePath
   #define MPE_InvalidCodePath MPE_Assert(0)
 #endif
