@@ -59,7 +59,7 @@ int main(int argc, char** argv)
     glfwInit();
     if (argv[1][0] == '-' && argv[1][1] == 't')
     {
-      for (int FileIndex = 1; FileIndex < argc; ++FileIndex)
+      for (int FileIndex = 2; FileIndex < argc; ++FileIndex)
       {
         MPEPolyContext PolyContext = LoadDataAndTriangulate(argv[FileIndex]);
         FreeMemory(&PolyContext);
