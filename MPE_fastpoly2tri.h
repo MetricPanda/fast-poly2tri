@@ -1879,7 +1879,7 @@ void MPE_PolySort(MPEPolyPoint** Points, MPEPolyPoint** Temp, u32 Count)
     MPEPolyPoint** ReadHalf1 = InHalf1;
 
     //NOTE: Don't merge if two halves are already sorted
-    if (InHalf1[-1]->Y > InHalf1[0]->Y)
+    if (InHalf1[-1]->Y >= InHalf1[0]->Y)
     {
       MPEPolyPoint** Out = Temp;
       for (u32 WriteIndex = 0; WriteIndex < Count; ++WriteIndex)
